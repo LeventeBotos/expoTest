@@ -1,336 +1,523 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 
+import { Pill } from '@/components/ui/pill';
+import { ProgressBar } from '@/components/ui/progress-bar';
+import { SectionHeading } from '@/components/ui/section-heading';
+import { Surface } from '@/components/ui/surface';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Palette, Radii } from '@/constants/design';
 import { Fonts } from '@/constants/theme';
-import {
-  FocusArea,
-  focusAreas,
-  replays,
-  sessionLibrary,
-  weeklyPlan,
-  writingPrompts,
-} from '@/constants/sessions';
+import { FocusArea, focusAreas, replays, sessionLibrary } from '@/constants/sessions';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
-type Prompt = (typeof writingPrompts)[number];
+const inspiration = [
+  { quote: 'You are enough, just as you are today.', author: 'Self-Love Journal' },
+  { quote: 'Rest is a productive part of healing.', author: 'Gentle Focus' },
+  { quote: 'Small boundaries create wide open calm.', author: 'Weekly Prompt' },
+];
+
+const moods = [
+  { id: 'calm', label: 'Calm', icon: 'mood' as const },
+  { id: 'grateful', label: 'Grateful', icon: 'heart.fill' as const },
+  { id: 'energized', label: 'Energized', icon: 'bolt' as const },
+  { id: 'reflective', label: 'Reflective', icon: 'brain' as const },
+];
 
 export default function HomeScreen() {
-  const router = useRouter();
-  const [activePrompt] = useState<Prompt>(writingPrompts[0]);
-  const [journalText, setJournalText] = useState('');
-  const featuredSession = sessionLibrary[0];
-  const toneByFocus = useMemo(
-    () =>
-      focusAreas.reduce<Record<FocusArea['id'], string>>(
-        (acc, item) => ({ ...acc, [item.id]: item.tone }),
-        {
-          'self-love': '#F06B73',
-          'me-time': '#53B59B',
-          roles: '#8F7CEE',
-          presence: '#E8A23C',
-        }
-      ),
-    []
-  );
+  const scheme = useColorScheme() ?? 'light';
+  const [quoteIndex, setQuoteIndex] = useState(0);
+  const [quickNote, setQuickNote] = useState('');
+  const [selectedMood, setSelectedMood] = useState(moods[2].id);
+  const [moodScore, setMoodScore] = useState(3);
+  const [microHabits, setMicroHabits] = useState<Record<string, boolean>>({
+    breath: false,
+    boundary: false,
+    journal: false,
+  });
+  const currentQuote = inspiration[quoteIndex % inspiration.length];
+  const continueSession = sessionLibrary[1];
 
-  const handleNavigate = (focus?: FocusArea['id']) => {
-    if (focus) {
-      router.push(`/explore?focus=${focus}`);
-      return;
-    }
-    router.push('/explore');
-  };
+  const handleShuffleQuote = () => setQuoteIndex((prev) => (prev + 1) % inspiration.length);
 
   const handleSaveNote = () => {
-    Alert.alert('Jegyzet elmentve', 'A jegyzet bekerült a visszajátszások közé.');
-    setJournalText('');
+    Alert.alert('Jegyzet elmentve', 'A mini jegyzet bekerült a visszajátszások közé.');
+    setQuickNote('');
+  };
+
+  const handleToggleHabit = (id: string) => {
+    setMicroHabits((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView
+      edges={['top']}
+      style={[
+        styles.safeArea,
+        { backgroundColor: scheme === 'dark' ? Palette.backgroundDark : Palette.backgroundLight },
+      ]}>
       <ThemedView style={styles.screen}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        bounces>
-        <LinearGradient
-          colors={['#FFDFC8', '#FFE1E7', '#E6F6EE']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hero}>
-          <View style={styles.heroHeader}>
-            <View style={styles.badge}>
-              <IconSymbol name="timer" size={16} color="#D65B67" />
-              <ThemedText style={styles.badgeText}>10-12 perces online foglalkozások</ThemedText>
-            </View>
-            <ThemedText type="title" style={styles.heroTitle}>
-              Lélekpercek
-            </ThemedText>
-            <ThemedText style={styles.heroSubtitle}>
-              Gyengéd, de fókuszált mini-gyakorlatok önszeretethez, én-időhöz és rugalmas
-              jelenléthez.
-            </ThemedText>
-            <View style={styles.heroActions}>
-              <TouchableOpacity
-                style={styles.primaryButton}
-                activeOpacity={0.9}
-                onPress={() => handleNavigate(featuredSession.category)}>
-                <IconSymbol name="play.circle.fill" size={22} color="#0D1B1E" />
-                <ThemedText style={styles.primaryText}>Kezdj egy 10 perces resetet</ThemedText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.ghostButton}
-                activeOpacity={0.9}
-                onPress={() => handleNavigate()}>
-                <IconSymbol name="book" size={18} color="#0D1B1E" />
-                <ThemedText style={styles.ghostText}>Nézd meg a gyakorlatsort</ThemedText>
-              </TouchableOpacity>
-            </View>
-          </View>
-          <View style={styles.heroStats}>
-            <View style={styles.statCard}>
-              <IconSymbol name="heart.fill" size={18} color="#D65B67" />
-              <ThemedText type="defaultSemiBold" style={styles.statLabel}>
-                Önszeretet
-              </ThemedText>
-              <ThemedText style={styles.statValue}>12 perc • esti rutin</ThemedText>
-            </View>
-            <View style={styles.statCard}>
-              <IconSymbol name="figure.walk" size={18} color="#2F8E75" />
-              <ThemedText type="defaultSemiBold" style={styles.statLabel}>
-                Én-idő séta
-              </ThemedText>
-              <ThemedText style={styles.statValue}>10 perc • reggeli indulás</ThemedText>
-            </View>
-          </View>
-        </LinearGradient>
-
-        <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Témák, amikre most figyelhetsz
-          </ThemedText>
-          <ThemedText style={styles.sectionHint}>Hanganyag + írás + mozdulat</ThemedText>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.focusRow}>
-          {focusAreas.map((area) => (
-            <View key={area.id} style={[styles.focusCard, { backgroundColor: area.accent }]}>
-              <ThemedText type="defaultSemiBold" style={[styles.focusTitle, { color: area.tone }]}>
-                {area.title}
-              </ThemedText>
-              <ThemedText style={styles.focusDescription}>{area.description}</ThemedText>
-              <View style={styles.focusFooter}>
-                <ThemedText style={[styles.pill, { color: area.tone }]}>{area.duration}</ThemedText>
-                <ThemedText style={styles.focusAnchor}>{area.anchor}</ThemedText>
-              </View>
-            </View>
-          ))}
-        </ScrollView>
-
-        <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Ajánlott ma
-          </ThemedText>
-          <ThemedText style={styles.sectionHint}>
-            {featuredSession.vibe} hangulat • {featuredSession.duration}
-          </ThemedText>
-        </View>
-        <LinearGradient
-          colors={['#FDF6EA', '#F0E9FF']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.featuredCard}>
-          <View style={styles.featuredHeader}>
-            <View style={styles.featuredBadge}>
-              <IconSymbol name="star.fill" size={14} color="#0D1B1E" />
-              <ThemedText style={styles.featuredBadgeText}>{featuredSession.anchor}</ThemedText>
-            </View>
-            <ThemedText type="defaultSemiBold" style={styles.featuredTitle}>
-              {featuredSession.title}
-            </ThemedText>
-            <ThemedText style={styles.featuredDescription}>{featuredSession.description}</ThemedText>
-          </View>
-          <View style={styles.featuredSteps}>
-            {featuredSession.steps.slice(0, 2).map((step, index) => (
-              <View key={index} style={styles.featuredStepRow}>
-                <IconSymbol name="sparkles" size={14} color="#0D1B1E" />
-                <ThemedText style={styles.featuredStepText}>{step}</ThemedText>
-              </View>
-            ))}
-          </View>
-          <TouchableOpacity
-            style={styles.featuredButton}
-            activeOpacity={0.9}
-            onPress={() => handleNavigate(featuredSession.category)}>
-            <IconSymbol name="play.fill" size={16} color="#0D1B1E" />
-            <ThemedText style={styles.featuredButtonText}>Indítás most</ThemedText>
-          </TouchableOpacity>
-        </LinearGradient>
-
-        <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Heti terv (10-12 perc)
-          </ThemedText>
-          <ThemedText style={styles.sectionHint}>Minden blokk visszanézhető</ThemedText>
-        </View>
-        <View style={styles.planGrid}>
-          {weeklyPlan.map((item) => (
-            <View key={item.id} style={[styles.planCard, { borderColor: toneByFocus[item.focus] }]}>
-              <View style={styles.planTopRow}>
-                <View style={[styles.dayBadge, { backgroundColor: toneByFocus[item.focus] + '22' }]}>
-                  <ThemedText type="defaultSemiBold" style={styles.dayBadgeText}>
-                    {item.day}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          bounces>
+          <LinearGradient
+            colors={['#fef3eb', '#e2f5fa']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.hero}>
+            <View style={styles.heroHeader}>
+              <View style={styles.identity}>
+                <View style={styles.avatar}>
+                  <LinearGradient
+                    colors={['#fff', '#dbeef5']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.avatarGradient}>
+                    <ThemedText style={styles.avatarInitial}>L</ThemedText>
+                  </LinearGradient>
+                </View>
+                <View>
+                  <ThemedText style={styles.eyebrow}>Good morning</ThemedText>
+                  <ThemedText type="title" style={styles.heroTitle}>
+                    Vegyél egy nagy levegőt
                   </ThemedText>
                 </View>
-                <ThemedText style={[styles.timeText, { color: toneByFocus[item.focus] }]}>
-                  {item.anchor}
-                </ThemedText>
               </View>
-              <ThemedText type="defaultSemiBold" style={styles.planTitle}>
-                {item.title}
+              <TouchableOpacity style={styles.iconButton} activeOpacity={0.85}>
+                <IconSymbol name="bell.fill" size={22} color={Palette.ink} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.heroCopy}>
+              <Pill tone="peach">
+                <ThemedText style={styles.badgeText}>10-12 perces mini gyakorlatok</ThemedText>
+              </Pill>
+              <ThemedText style={styles.heroSubtitle}>
+                Puha inspiráció, határhúzás és írás – mind egy helyen.
               </ThemedText>
-              <ThemedText style={styles.planDetail}>{item.detail}</ThemedText>
-              <View style={styles.planFooter}>
-                <ThemedText style={styles.planLength}>{item.length}</ThemedText>
-                <TouchableOpacity
-                  style={styles.planButton}
-                  activeOpacity={0.85}
-                  onPress={() => handleNavigate(item.focus)}>
-                  <ThemedText style={[styles.planButtonText, { color: toneByFocus[item.focus] }]}>
-                    Kezdés
-                  </ThemedText>
-                  <IconSymbol name="arrow.right" size={14} color={toneByFocus[item.focus]} />
+              <View style={styles.heroActions}>
+                <TouchableOpacity style={styles.primaryButton} activeOpacity={0.92}>
+                  <IconSymbol name="play.fill" size={18} color="#0D1B1E" />
+                  <ThemedText style={styles.primaryText}>Indítsd a mai ajánlót</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.ghostButton} activeOpacity={0.9}>
+                  <IconSymbol name="book.open" size={18} color="#0D1B1E" />
+                  <ThemedText style={styles.ghostText}>Gyakorlatok listája</ThemedText>
                 </TouchableOpacity>
               </View>
             </View>
-          ))}
-        </View>
+          </LinearGradient>
 
-        <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Jegyzet most
-          </ThemedText>
-          <ThemedText style={styles.sectionHint}>
-            {activePrompt.minutes} perc írás, hogy le is rögzüljön
-          </ThemedText>
-        </View>
-        <View style={styles.journalCard}>
-          <View style={styles.journalHeader}>
-            <IconSymbol name="pencil.and.outline" size={18} color="#0D1B1E" />
-            <ThemedText type="defaultSemiBold" style={styles.journalTitle}>
-              {activePrompt.title}
-            </ThemedText>
-          </View>
-          <TextInput
-            placeholder={activePrompt.placeholder}
-            placeholderTextColor="#6B7280"
-            value={journalText}
-            onChangeText={setJournalText}
-            multiline
-            style={styles.textArea}
+          <Surface variant="tonal" tone="peach" style={styles.inspirationCard} padding={18}>
+            <View style={styles.cardHeading}>
+              <IconSymbol name="sparkles" size={18} color={Palette.primaryDeep} />
+              <ThemedText style={styles.cardHeadingText}>Daily inspiration</ThemedText>
+            </View>
+            <ThemedText style={styles.quote}>{currentQuote.quote}</ThemedText>
+            <View style={styles.cardFooter}>
+              <ThemedText style={styles.quoteAuthor}>— {currentQuote.author}</ThemedText>
+              <TouchableOpacity style={styles.shuffle} onPress={handleShuffleQuote} activeOpacity={0.85}>
+                <IconSymbol name="arrow.right" size={14} color={Palette.primaryDeep} />
+                <ThemedText style={styles.shuffleText}>Új idézet</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </Surface>
+
+          <Surface variant="raised" style={styles.moodCard} padding={16}>
+            <View style={styles.moodTopRow}>
+              <ThemedText style={styles.moodTitle}>Hangulat + minihabits</ThemedText>
+              <Pill tone="foam">
+                <ThemedText style={styles.moodPillText}>1 perc check-in</ThemedText>
+              </Pill>
+            </View>
+            <View style={styles.moodScoreRow}>
+              {[1, 2, 3, 4, 5].map((score) => {
+                const active = score === moodScore;
+                return (
+                  <TouchableOpacity
+                    key={score}
+                    onPress={() => setMoodScore(score)}
+                    activeOpacity={0.85}
+                    style={[
+                      styles.moodScoreDot,
+                      {
+                        backgroundColor: active ? Palette.primary : '#f0f3f6',
+                        borderColor: active ? Palette.primaryDeep : '#dbe3e7',
+                      },
+                    ]}>
+                    <ThemedText
+                      style={[
+                        styles.moodScoreText,
+                        { color: active ? '#fff' : Palette.muted },
+                      ]}>
+                      {score}
+                    </ThemedText>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <View style={styles.moodChips}>
+              {moods.map((mood) => {
+                const active = mood.id === selectedMood;
+                return (
+                  <TouchableOpacity
+                    key={mood.id}
+                    onPress={() => setSelectedMood(mood.id)}
+                    activeOpacity={0.85}
+                    style={[
+                      styles.moodChip,
+                      {
+                        backgroundColor: active ? `${Palette.primary}16` : '#fff',
+                        borderColor: active ? Palette.primary : '#e2e8ed',
+                      },
+                    ]}>
+                    <IconSymbol
+                      name={mood.icon}
+                      size={18}
+                      color={active ? Palette.primaryDeep : Palette.muted}
+                    />
+                    <ThemedText
+                      style={[
+                        styles.moodChipText,
+                        { color: active ? Palette.primaryDeep : Palette.muted },
+                      ]}>
+                      {mood.label}
+                    </ThemedText>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <View style={styles.habitRow}>
+              {[
+                { id: 'breath', label: '2x 4-4-6 légzés', icon: 'mood' as const },
+                { id: 'boundary', label: '1 határ kimondása', icon: 'bolt' as const },
+                { id: 'journal', label: '3 mondat napló', icon: 'edit.note' as const },
+              ].map((habit) => {
+                const active = microHabits[habit.id];
+                return (
+                  <TouchableOpacity
+                    key={habit.id}
+                    onPress={() => handleToggleHabit(habit.id)}
+                    activeOpacity={0.85}
+                    style={[
+                      styles.habitChip,
+                      {
+                        backgroundColor: active ? `${Palette.primary}18` : '#f7fafc',
+                        borderColor: active ? Palette.primary : '#e3e8ec',
+                      },
+                    ]}>
+                    <IconSymbol
+                      name={habit.icon}
+                      size={16}
+                      color={active ? Palette.primaryDeep : Palette.muted}
+                    />
+                    <ThemedText
+                      style={[
+                        styles.habitText,
+                        { color: active ? Palette.primaryDeep : Palette.muted },
+                      ]}>
+                      {habit.label}
+                    </ThemedText>
+                    <IconSymbol
+                      name={active ? 'check.circle.fill' : 'circle.fill'}
+                      size={16}
+                      color={active ? Palette.primaryDeep : '#c6d2d9'}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Surface>
+
+          <SectionHeading
+            title="Fedezd fel a kategóriákat"
+            subtitle="Hanganyag + jegyzet + mozdulat"
+            actionLabel="Összes megnyitása"
           />
-          <TouchableOpacity style={styles.saveButton} activeOpacity={0.9} onPress={handleSaveNote}>
-            <IconSymbol name="tray.and.arrow.down" size={16} color="#0D1B1E" />
-            <ThemedText style={styles.saveText}>Mentés és visszanézés</ThemedText>
-          </TouchableOpacity>
-        </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.focusRow}>
+            {focusAreas.map((area) => (
+              <Surface key={area.id} variant="raised" style={styles.focusCard} padding={16}>
+                <View style={[styles.iconBadge, { backgroundColor: `${area.tone}15` }]}>
+                  <IconSymbol name={getIcon(area.id)} size={20} color={area.tone} />
+                </View>
+                <ThemedText type="defaultSemiBold" style={[styles.focusTitle, { color: area.tone }]}>
+                  {area.title}
+                </ThemedText>
+                <ThemedText style={styles.focusDescription}>{area.description}</ThemedText>
+                <View style={styles.focusFooter}>
+                  <Pill tone="sage">
+                    <ThemedText style={styles.focusMeta}>{area.duration}</ThemedText>
+                  </Pill>
+                  <ThemedText style={[styles.focusAnchor, { color: area.tone }]}>
+                    {area.anchor}
+                  </ThemedText>
+                </View>
+              </Surface>
+            ))}
+          </ScrollView>
 
-        <View style={styles.sectionHeader}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            Legutóbbi visszajátszások
-          </ThemedText>
-          <ThemedText style={styles.sectionHint}>Hanganyagok + jegyzetek</ThemedText>
-        </View>
-        <View style={styles.replayColumn}>
-          {replays.map((item) => (
-            <View key={item.id} style={styles.replayCard}>
-              <View style={styles.replayTop}>
-                <IconSymbol name="repeat" size={16} color="#0D1B1E" />
-                <ThemedText type="defaultSemiBold" style={styles.replayTitle}>
-                  {item.title}
+          <SectionHeading
+            title="Folytasd a gyakorlatot"
+            subtitle="Soft-sage energia, épp mint a kedvenc példában"
+          />
+          <Surface variant="raised" style={styles.practiceCard} padding={18}>
+            <View style={styles.practiceTop}>
+              <View style={styles.practiceInfo}>
+                <View style={styles.practiceIcon}>
+                  <IconSymbol name="leaf" size={28} color={Palette.sage} />
+                </View>
+                <View style={{ gap: 4 }}>
+                  <ThemedText style={styles.practiceLabel}>Exercise</ThemedText>
+                  <ThemedText type="defaultSemiBold" style={styles.practiceTitle}>
+                    {continueSession.title}
+                  </ThemedText>
+                  <ThemedText style={styles.practiceMeta}>
+                    {continueSession.duration} • {continueSession.format}
+                  </ThemedText>
+                </View>
+              </View>
+              <TouchableOpacity style={styles.playButton} activeOpacity={0.88}>
+                <IconSymbol name="play.fill" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <View style={{ gap: 8 }}>
+              <ProgressBar value={35} trackColor="#ecf1f4" progressColor={Palette.primary} />
+              <View style={styles.progressLabels}>
+                <ThemedText style={styles.progressLabel}>4 perc kész</ThemedText>
+                <ThemedText style={styles.progressLabel}>12 perc összesen</ThemedText>
+              </View>
+            </View>
+          </Surface>
+
+          <Surface variant="tonal" tone="primary" style={styles.weeklyCard} padding={18}>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={styles.weeklyIcon}>
+                <IconSymbol name="lightbulb.fill" size={22} color={Palette.primaryDeep} />
+              </View>
+              <View style={{ gap: 6, flex: 1 }}>
+                <ThemedText style={styles.weeklyLabel}>Heti fókusz</ThemedText>
+                <ThemedText type="defaultSemiBold" style={styles.weeklyTitle}>
+                  Határhúzás, mint önszeretet
+                </ThemedText>
+                <ThemedText style={styles.weeklyCopy}>
+                  Gyakorold a „nem” kimondását olyan dolgokra, amik elviszik az energiádat. Rövid
+                  légzés + jegyzet segít rögzíteni.
                 </ThemedText>
               </View>
-              <ThemedText style={styles.replayMeta}>{item.savedAt}</ThemedText>
-              <View style={styles.replayFooter}>
-                <ThemedText style={styles.replayMood}>{item.mood}</ThemedText>
-                <ThemedText style={styles.replayLength}>{item.length}</ThemedText>
-                <TouchableOpacity style={styles.replayButton} activeOpacity={0.85}>
-                  <IconSymbol name="play.fill" size={16} color="#0D1B1E" />
-                  <ThemedText style={styles.replayButtonText}>Lejátszás</ThemedText>
-                </TouchableOpacity>
-              </View>
             </View>
-          ))}
-        </View>
-      </ScrollView>
+          </Surface>
+
+          <SectionHeading title="Legutóbbi visszajátszások" subtitle="Hanganyag + jegyzet + mood" />
+          <View style={styles.replayList}>
+            {replays.slice(0, 2).map((item) => (
+              <Surface key={item.id} variant="raised" padding={16} style={styles.replayCard}>
+                <View style={styles.replayTop}>
+                  <IconSymbol name="repeat" size={16} color={Palette.primaryDeep} />
+                  <ThemedText type="defaultSemiBold" style={styles.replayTitle}>
+                    {item.title}
+                  </ThemedText>
+                </View>
+                <ThemedText style={styles.replayMeta}>{item.savedAt} • {item.length}</ThemedText>
+                <View style={styles.replayFooter}>
+                  <ThemedText style={[styles.replayMood, { color: Palette.primaryDeep }]}>
+                    {item.mood}
+                  </ThemedText>
+                  <TouchableOpacity style={styles.replayButton} activeOpacity={0.88}>
+                    <IconSymbol name="play.fill" size={16} color="#0D1B1E" />
+                    <ThemedText style={styles.replayButtonText}>Lejátszás</ThemedText>
+                  </TouchableOpacity>
+                </View>
+              </Surface>
+            ))}
+          </View>
+
+          <SectionHeading
+            title="Mini journal"
+            subtitle="Pont mint a harmadik minta: mood + jegyzet"
+            actionLabel="Összes jegyzet"
+          />
+          <Surface variant="raised" padding={18} style={styles.journalCard}>
+            <ThemedText style={styles.journalEyebrow}>Érzés most</ThemedText>
+            <View style={styles.moodRow}>
+              {moods.map((mood) => {
+                const active = mood.id === selectedMood;
+                return (
+                  <TouchableOpacity
+                    key={mood.id}
+                    style={[
+                      styles.moodButton,
+                      {
+                        backgroundColor: active ? `${Palette.primary}22` : '#fff',
+                        borderColor: active ? Palette.primary : '#e5e8ec',
+                      },
+                    ]}
+                    onPress={() => setSelectedMood(mood.id)}
+                    activeOpacity={0.85}>
+                    <IconSymbol
+                      name={mood.icon}
+                      size={22}
+                      color={active ? Palette.primaryDeep : Palette.ink}
+                    />
+                    <ThemedText
+                      style={[
+                        styles.moodLabel,
+                        { color: active ? Palette.primaryDeep : Palette.muted },
+                      ]}>
+                      {mood.label}
+                    </ThemedText>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <View style={styles.textAreaWrapper}>
+              <TextInput
+                style={styles.textArea}
+                multiline
+                placeholder="Írd le, hogy hat rád most ez a gyakorlat…"
+                placeholderTextColor="#9FB1B5"
+                value={quickNote}
+                onChangeText={setQuickNote}
+              />
+            </View>
+            <View style={styles.journalActions}>
+              <TouchableOpacity style={styles.saveButton} activeOpacity={0.92} onPress={handleSaveNote}>
+                <IconSymbol name="sparkles" size={18} color="#fff" />
+                <ThemedText style={styles.saveText}>Mentés a naplómba</ThemedText>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.skipButton} activeOpacity={0.85}>
+                <ThemedText style={styles.skipText}>Kihagyom most</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </Surface>
+        </ScrollView>
       </ThemedView>
     </SafeAreaView>
   );
 }
 
+function getIcon(category: FocusArea['id']) {
+  switch (category) {
+    case 'self-love':
+      return 'heart.fill';
+    case 'me-time':
+      return 'coffee';
+    case 'roles':
+      return 'diversity.3';
+    case 'presence':
+      return 'sparkles';
+    default:
+      return 'sparkles';
+  }
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFF',
   },
   screen: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
   hero: {
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
     paddingHorizontal: 24,
-    paddingTop: 40,
+    paddingTop: 36,
     paddingBottom: 28,
-    gap: 24,
+    gap: 18,
+    borderBottomLeftRadius: Radii.xl,
+    borderBottomRightRadius: Radii.xl,
   },
   heroHeader: {
-    gap: 12,
-  },
-  badge: {
-    backgroundColor: '#0D1B1E',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
   },
-  badgeText: {
-    color: '#FFF',
+  identity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: Radii.lg,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  avatarGradient: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    fontFamily: Fonts.bodyBold,
+    fontSize: 18,
+    color: Palette.ink,
+  },
+  eyebrow: {
+    fontSize: 12,
+    color: Palette.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
     fontFamily: Fonts.bodySemiBold,
-    fontSize: 13,
   },
   heroTitle: {
-    fontSize: 36,
-    color: '#0D1B1E',
+    fontSize: 28,
+    lineHeight: 32,
+    color: Palette.ink,
+  },
+  iconButton: {
+    width: 46,
+    height: 46,
+    borderRadius: Radii.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e7eef2',
+  },
+  heroCopy: {
+    gap: 12,
+  },
+  badgeText: {
+    fontSize: 13,
+    color: Palette.ink,
+    fontFamily: Fonts.bodySemiBold,
   },
   heroSubtitle: {
-    color: '#1F2937',
+    color: Palette.ink,
     fontSize: 16,
     lineHeight: 24,
   },
   heroActions: {
     flexDirection: 'row',
-    gap: 12,
     flexWrap: 'wrap',
+    gap: 10,
   },
   primaryButton: {
-    backgroundColor: '#F6F0E7',
+    backgroundColor: '#fff',
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: Radii.lg,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    borderWidth: 1,
+    borderColor: '#dfe9ee',
   },
   primaryText: {
     color: '#0D1B1E',
@@ -341,7 +528,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: Radii.lg,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -350,233 +537,250 @@ const styles = StyleSheet.create({
     color: '#0D1B1E',
     fontFamily: Fonts.bodySemiBold,
   },
-  heroStats: {
-    flexDirection: 'row',
-    gap: 12,
-    flexWrap: 'wrap',
+  inspirationCard: {
+    marginHorizontal: 18,
+    marginTop: 16,
   },
-  statCard: {
-    backgroundColor: '#0D1B1E',
-    padding: 14,
-    borderRadius: 14,
-    width: '47%',
+  cardHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  cardHeadingText: {
+    fontFamily: Fonts.bodySemiBold,
+    color: Palette.primaryDeep,
+    letterSpacing: 0.5,
+  },
+  quote: {
+    fontSize: 22,
+    fontFamily: Fonts.display,
+    lineHeight: 30,
+    color: Palette.ink,
+    marginBottom: 8,
+  },
+  quoteAuthor: {
+    color: Palette.muted,
+    fontFamily: Fonts.bodySemiBold,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  shuffle: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
   },
-  statLabel: {
-    color: '#FFF',
+  shuffleText: {
+    color: Palette.primaryDeep,
+    fontFamily: Fonts.bodySemiBold,
   },
-  statValue: {
-    color: '#D1D5DB',
+  moodCard: {
+    marginHorizontal: 18,
+    marginTop: 10,
+    gap: 12,
   },
-  sectionHeader: {
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    gap: 4,
+  moodTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  sectionTitle: {
-    fontSize: 22,
-    color: '#0D1B1E',
+  moodTitle: {
+    fontFamily: Fonts.bodyBold,
+    fontSize: 16,
+    color: Palette.ink,
   },
-  sectionHint: {
-    color: '#4B5563',
+  moodPillText: {
+    color: Palette.primaryDeep,
+    fontFamily: Fonts.bodySemiBold,
+  },
+  moodScoreRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  moodScoreDot: {
+    width: 40,
+    height: 40,
+    borderRadius: Radii.lg,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moodScoreText: {
+    fontFamily: Fonts.bodyBold,
+  },
+  moodChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  moodChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: Radii.lg,
+    borderWidth: 1,
+  },
+  moodChipText: {
+    fontFamily: Fonts.bodySemiBold,
+  },
+  habitRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  habitChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: Radii.lg,
+    borderWidth: 1,
+    flex: 1,
+    minWidth: '30%',
+  },
+  habitText: {
+    flex: 1,
+    fontFamily: Fonts.bodySemiBold,
   },
   focusRow: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 10,
   },
   focusCard: {
-    width: 220,
-    borderRadius: 16,
-    padding: 16,
+    width: 180,
     marginRight: 12,
-    gap: 8,
+    gap: 10,
+  },
+  iconBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: Radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   focusTitle: {
     fontSize: 18,
   },
   focusDescription: {
-    color: '#111827',
+    color: Palette.ink,
+    lineHeight: 20,
   },
   focusFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: 4,
   },
-  pill: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
+  focusMeta: {
+    color: Palette.sage,
     fontFamily: Fonts.bodySemiBold,
   },
   focusAnchor: {
-    color: '#111827',
-  },
-  featuredCard: {
-    marginHorizontal: 24,
-    marginTop: 12,
-    borderRadius: 18,
-    padding: 18,
-    gap: 12,
-  },
-  featuredHeader: {
-    gap: 8,
-  },
-  featuredBadge: {
-    backgroundColor: '#0D1B1E',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  featuredBadgeText: {
-    color: '#FFF',
     fontFamily: Fonts.bodySemiBold,
   },
-  featuredTitle: {
-    color: '#0D1B1E',
-    fontSize: 18,
+  practiceCard: {
+    marginHorizontal: 18,
+    marginTop: 10,
+    gap: 12,
   },
-  featuredDescription: {
-    color: '#1F2937',
-  },
-  featuredSteps: {
-    gap: 6,
-  },
-  featuredStepRow: {
+  practiceTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
   },
-  featuredStepText: {
-    color: '#0D1B1E',
+  practiceInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     flex: 1,
   },
-  featuredButton: {
-    backgroundColor: '#0D1B1E',
-    paddingVertical: 12,
-    borderRadius: 12,
+  practiceIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: Radii.lg,
+    backgroundColor: `${Palette.sage}25`,
     alignItems: 'center',
-    flexDirection: 'row',
     justifyContent: 'center',
-    gap: 8,
   },
-  featuredButtonText: {
-    color: '#FDF6EA',
+  practiceLabel: {
+    color: Palette.sage,
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
     fontFamily: Fonts.bodySemiBold,
   },
-  planGrid: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+  practiceTitle: {
+    fontSize: 18,
+    color: Palette.ink,
   },
-  planCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 14,
-    width: '48%',
-    gap: 6,
+  practiceMeta: {
+    color: Palette.muted,
   },
-  planTopRow: {
+  playButton: {
+    width: 54,
+    height: 54,
+    borderRadius: Radii.pill,
+    backgroundColor: Palette.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...{
+      shadowColor: 'rgba(121, 188, 210, 0.35)',
+      shadowOpacity: 0.6,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 8,
+    },
+  },
+  progressLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
   },
-  dayBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  dayBadgeText: {
-    color: '#0D1B1E',
+  progressLabel: {
+    fontSize: 12,
+    color: Palette.muted,
     fontFamily: Fonts.bodySemiBold,
   },
-  timeText: {
-    fontFamily: Fonts.bodySemiBold,
+  weeklyCard: {
+    marginHorizontal: 18,
+    marginTop: 16,
   },
-  planTitle: {
-    fontSize: 17,
-    color: '#0D1B1E',
-  },
-  planDetail: {
-    color: '#4B5563',
-  },
-  planFooter: {
-    flexDirection: 'row',
+  weeklyIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: Radii.md,
+    backgroundColor: '#fff',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 2,
-  },
-  planLength: {
-    color: '#1F2937',
-    fontFamily: Fonts.bodySemiBold,
-  },
-  planButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  planButtonText: {
-    fontFamily: Fonts.bodySemiBold,
-  },
-  journalCard: {
-    backgroundColor: '#0D1B1E',
-    marginHorizontal: 24,
-    marginTop: 12,
-    borderRadius: 18,
-    padding: 16,
-    gap: 12,
-  },
-  journalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  journalTitle: {
-    color: '#FFF',
-    fontSize: 17,
-  },
-  textArea: {
-    backgroundColor: '#111827',
-    borderRadius: 12,
-    padding: 12,
-    minHeight: 110,
-    color: '#F9FAFB',
-    textAlignVertical: 'top',
-    fontFamily: Fonts.body,
-    fontSize: 15,
-  },
-  saveButton: {
-    backgroundColor: '#F6F0E7',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    flexDirection: 'row',
     justifyContent: 'center',
-    gap: 8,
   },
-  saveText: {
-    color: '#0D1B1E',
+  weeklyLabel: {
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: Palette.primaryDeep,
     fontFamily: Fonts.bodySemiBold,
   },
-  replayColumn: {
-    paddingHorizontal: 24,
-    paddingTop: 12,
+  weeklyTitle: {
+    fontSize: 18,
+    color: Palette.ink,
+  },
+  weeklyCopy: {
+    color: Palette.ink,
+    lineHeight: 20,
+  },
+  replayList: {
+    paddingHorizontal: 18,
+    paddingTop: 10,
     gap: 12,
   },
   replayCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    gap: 8,
   },
   replayTop: {
     flexDirection: 'row',
@@ -584,36 +788,100 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   replayTitle: {
-    color: '#0D1B1E',
     fontSize: 16,
+    color: Palette.ink,
   },
   replayMeta: {
-    color: '#6B7280',
+    color: Palette.muted,
   },
   replayFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     justifyContent: 'space-between',
   },
   replayMood: {
-    color: '#0D1B1E',
     fontFamily: Fonts.bodySemiBold,
   },
-  replayLength: {
-    color: '#4B5563',
-  },
   replayButton: {
-    backgroundColor: '#E7F0ED',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    backgroundColor: '#ecf1f4',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: Radii.md,
   },
   replayButtonText: {
     color: '#0D1B1E',
+    fontFamily: Fonts.bodySemiBold,
+  },
+  journalCard: {
+    marginHorizontal: 18,
+    marginTop: 12,
+    gap: 12,
+  },
+  journalEyebrow: {
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: Palette.muted,
+    fontFamily: Fonts.bodySemiBold,
+  },
+  moodRow: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  moodButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: Radii.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+  },
+  moodLabel: {
+    fontFamily: Fonts.bodySemiBold,
+  },
+  textAreaWrapper: {
+    backgroundColor: '#f4f6f8',
+    borderRadius: Radii.lg,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e6eaee',
+  },
+  textArea: {
+    minHeight: 120,
+    textAlignVertical: 'top',
+    color: Palette.ink,
+    fontFamily: Fonts.body,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  journalActions: {
+    gap: 10,
+  },
+  saveButton: {
+    backgroundColor: Palette.primary,
+    paddingVertical: 14,
+    borderRadius: Radii.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  saveText: {
+    color: '#fff',
+    fontFamily: Fonts.bodyBold,
+    fontSize: 16,
+  },
+  skipButton: {
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  skipText: {
+    color: Palette.muted,
     fontFamily: Fonts.bodySemiBold,
   },
 });
